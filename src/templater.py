@@ -75,7 +75,7 @@ class Templater:
 
         for dt in model_data_tables:
             print(model_data_tables[dt])
-            self.data_tables[dt]["target"] = model_data_tables[dt]["data"]
+            self.data_tables[dt]["target"] = model_data_tables[dt]["table"]
 
         # load required inputs
         data_tables = {}
@@ -123,7 +123,7 @@ class Templater:
     def _collect_paths_templates(self, model):
         """Collect paths of templates from the model configuration."""
         path_templates = []
-        path_templates.extend(model["config"]["build"]["add_math"])
+        path_templates.extend(model["config"]["init"]["math_paths"].values())
         path_templates.extend(model["import"])
 
         print(f"Paths templates: {path_templates}")
