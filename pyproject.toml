@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+
+[tool.black]
+exclude = '''
+/(
+    \
+  |
+    \.eggs
+  | \.git
+  | \.mypy_cache
+  | meta/migrations
+  | docs
+  | .venv
+)/
+'''
+max-line-length=100
+
+[tool.isort]
+profile = "black"
