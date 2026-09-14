@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Callable
 import pandas as pd
 import numpy as np
-from collections import namedtuple
 import calliope
 
 
@@ -30,7 +29,7 @@ class Process:
             Additional attributes used as extra columns in the results DataFrame.
         """
         result = self.function(model)
-        for key, value in kwargs.items():
+        for key, value in reversed(list(kwargs.items())):
             result.insert(0, key, value)
 
         self.results = self._standardise_and_concat([self.results, result])
@@ -53,11 +52,11 @@ class Processor:
 
     Parameters
     ----------
-    model_specs : list[namedtuple]
-        List of namedtuples with model specifications.
-        Each namedtuple should contain the same fields.
-        The fields can be any, but one of them must be path.
-        The path should point to a calliope model file.
+    model_specs : list[dict[str, str]]
+        List of dictionaries with model specifications. Each dictionary must
+        contain a `path` key pointing to a calliope model file. Other keys may differ
+        between models. All keys are prepended to the results
+        in first-seen order, with NaN for missing values.
     
     Methods
     -------
@@ -67,10 +66,10 @@ class Processor:
     process_results() -> None
         Process the results using the registered processes.
     
-    _validate_model_spec(model_specs: list[namedtuple]) -> list[namedtuple]
+    _validate_model_spec(model_specs: list[dict[str, str]]) -> list[dict[str, str]]
         Validate the model specifications and check for file existence.
     """
-    def __init__(self, model_specs: namedtuple):
+    def __init__(self, model_specs: list[dict[str, str]]):
         self.model_specs = self._validate_model_spec(model_specs)
         self.processes = []
 
@@ -82,21 +81,24 @@ class Processor:
         
     def process_results(self):
         """Iterate over all models and let all registered processes process."""
+        all_attributes = list(dict.fromkeys(key for spec in self.model_specs for key in spec))
         for model_spec in self.model_specs:
-            model = calliope.read_netcdf(model_spec.path)
-            attributes = {k: getattr(model_spec, k) for k in model_spec._fields if k != 'path'}
+            model = calliope.read_netcdf(model_spec["path"])
+            attributes = {key: model_spec.get(key, np.nan) for key in all_attributes}
             for process in self.processes:
                 process.process(model, **attributes)
     
     @staticmethod
-    def _validate_model_spec(model_specs: list[namedtuple]) -> list[namedtuple]:
-        """Make sure all model specs are of the same type and path exists."""
-        model_specs_type = type(model_specs[0])
+    def _validate_model_spec(model_specs: list[dict[str, str]]) -> list[dict[str, str]]:
+        """Check that specifications are string dictionaries with existing paths."""
         for model_spec in model_specs:
-            if not isinstance(model_spec, model_specs_type):
-                raise TypeError(f"Model specifications must be of the same type.")
-            if not hasattr(model_spec, 'path'):
-                raise ValueError(f"model_spec {model_spec} is missing a 'path' attribute.")
-            if not model_spec.path or not Path(model_spec.path).exists():
-                raise FileNotFoundError(f"File not found: {model_spec.path}")
+            if not isinstance(model_spec, dict):
+                raise TypeError("Model specifications must be dictionaries.")
+            if "path" not in model_spec:
+                raise ValueError(f"model_spec {model_spec} is missing a 'path' key.")
+            if not all(isinstance(key, str) and isinstance(value, str)
+                       for key, value in model_spec.items()):
+                raise TypeError("Model specification keys and values must be strings.")
+            if not model_spec["path"] or not Path(model_spec["path"]).exists():
+                raise FileNotFoundError(f"File not found: {model_spec['path']}")
         return model_specs
