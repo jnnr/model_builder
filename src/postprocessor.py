@@ -79,9 +79,11 @@ class Processor:
             raise TypeError("Process must be of type 'Process'.")
         self.processes.append(process)
         
-    def process_results(self):
+    def process_results(self, select_labels: list[str] = None) -> None:
         """Iterate over all models and let all registered processes process."""
         all_attributes = list(dict.fromkeys(key for spec in self.model_specs for key in spec))
+        if select_labels:
+            all_attributes = [key for key in all_attributes if key in select_labels]
         for model_spec in self.model_specs:
             model = calliope.read_netcdf(model_spec["path"])
             attributes = {key: model_spec.get(key, np.nan) for key in all_attributes}
