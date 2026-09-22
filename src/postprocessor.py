@@ -98,7 +98,10 @@ class Processor:
             model = calliope.read_netcdf(model_spec["path"])
             attributes = {key: model_spec.get(key, np.nan) for key in all_attributes}
             for process in self.processes:
-                process.process(model, **attributes)
+                try:
+                    process.process(model, **attributes)
+                except Exception as e:
+                    logger.error(f"Error processing model at {model_spec['path']} with process {process.function.__name__}: {e}")
     
     @staticmethod
     def _validate_model_spec(model_specs: list[dict[str, str]]) -> list[dict[str, str]]:
