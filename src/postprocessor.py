@@ -3,6 +3,10 @@ from typing import Callable
 import pandas as pd
 import numpy as np
 import calliope
+import logging
+
+
+logger = logging.getLogger()
 
 
 class Process:
@@ -37,9 +41,15 @@ class Process:
     @staticmethod
     def _standardise_and_concat(dfs: list[pd.DataFrame]) -> pd.DataFrame:
         """Standardize and concatenate a list of DataFrames."""
-        all_columns = [col for df in dfs for col in list(df.columns)]
+        dfs_nonempty = []
+        for df in dfs:
+            if df.empty:
+                logger.warning("Dropping empty DataFrame.")
+            else:
+                dfs_nonempty.append(df)
+        all_columns = [col for df in dfs_nonempty for col in list(df.columns)]
         all_columns = list(dict.fromkeys(all_columns))  # like set operation, but conserve order
-        dfs_standardized = [df.reindex(columns=all_columns, fill_value=np.nan) for df in dfs]
+        dfs_standardized = [df.reindex(columns=all_columns, fill_value=np.nan) for df in dfs_nonempty]
         concatenated = pd.concat(dfs_standardized, ignore_index=True)
 
         return concatenated
